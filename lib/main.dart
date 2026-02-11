@@ -31,6 +31,9 @@ class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateM
   AnimationController? _balloonController;
   // Flag to track whether balloons should be displayed
   bool _showBalloons = false;
+  
+  // AnimationController for the heart pulse/pulsing animation (heartbeat effect)
+  late AnimationController _pulseController;
 
   @override
   void initState() {
@@ -46,12 +49,20 @@ class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateM
         setState(() => _showBalloons = false);
       }
     });
+    
+    // Initialize pulse controller for heartbeat animation (0.6 seconds for quick pulse)
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
   }
 
   @override
   void dispose() {
     // Clean up the animation controller to prevent memory leaks (safely handle null case)
     _balloonController?.dispose();
+    // Clean up the pulse controller
+    _pulseController.dispose();
     super.dispose();
   }
 
@@ -60,6 +71,12 @@ class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateM
     setState(() => _showBalloons = true); // Show balloons
     _balloonController?.reset(); // Reset animation to start
     _balloonController?.forward(); // Start animation from beginning
+  }
+  
+  // Method triggered when the "Pulse Heart" button is pressed - makes heart beat/scale up and down
+  void _triggerHeartPulse() {
+    _pulseController.reset();
+    _pulseController.forward();
   }
 
   @override
@@ -89,6 +106,17 @@ class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateM
                 icon: const Icon(Icons.celebration),
                 label: const Text('Balloon Celebration'),
               ),
+              const SizedBox(width: 24),
+              // Button to trigger the heartbeat/pulse animation - makes heart scale up and down
+              ElevatedButton.icon(
+                onPressed: _triggerHeartPulse,
+                icon: const Icon(Icons.favorite),
+                label: const Text('Pulse Heart'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  foregroundColor: Colors.white,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -117,17 +145,31 @@ class _ValentineHomeState extends State<ValentineHome> with TickerProviderStateM
                   ),
                   child: Center(
                     // Heart emoji painter centered on the background
-                    child: Stack(
-                      alignment: Alignment.center,
-                      children: [
-                        CustomPaint(
-                          size: const Size(300, 300),
-                          painter: HeartEmojiPainter(type: selectedEmoji),
-                        ),
-                        // Sparkles layer - twinkling stars around the heart
-                        // This uses a Ticker to create continuous animation
-                        _SparklesWidget(),
-                      ],
+                    // Wrap in AnimatedBuilder to apply pulse/scale animation
+                    child: AnimatedBuilder(
+                      animation: _pulseController,
+                      builder: (context, child) {
+                        // Create scale animation: pulse from 1.0 to 1.15 and back to 1.0
+                        // Using a curve that creates a heartbeat feel
+                        final scale = 1.0 + (_pulseController.value * 0.15);
+                        
+                        return Transform.scale(
+                          scale: scale,
+                          child: child,
+                        );
+                      },
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          CustomPaint(
+                            size: const Size(300, 300),
+                            painter: HeartEmojiPainter(type: selectedEmoji),
+                          ),
+                          // Sparkles layer - twinkling stars around the heart
+                          // This uses a Ticker to create continuous animation
+                          _SparklesWidget(),
+                        ],
+                      ),
                     ),
                   ),
                 ),
